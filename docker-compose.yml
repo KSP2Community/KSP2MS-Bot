@@ -1,0 +1,6 @@
+services:
+  forum-permission-bot:
+    build: .
+    restart: unless-stopped
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}

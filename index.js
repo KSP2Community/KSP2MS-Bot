@@ -20,6 +20,7 @@ const client = new Client({
 client.once('clientReady', () => {
   console.log(`[ready] Logged in as ${client.user.tag}`);
   console.log(`[ready] Monitoring ${config.forumChannelIds.length} forum channel(s)`);
+  console.log(`[ready] Monitoring ${config.honeypotChannelIds.length} honeypot channel(s)`);
 });
 
 client.on('messageCreate', message => handleMessageCreate(message, client, config));

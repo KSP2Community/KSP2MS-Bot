@@ -1,6 +1,7 @@
 {
   "forumChannelIds": ["1168292144507793488"],
   "staffRoleIds": ["1086284964393406525"],
+  "honeypotChannelIds": ["1512149911628546199"],
   "notificationChannelId": "1078841771771056280",
   "rulesChannelId": "1168636558228860968"
 }

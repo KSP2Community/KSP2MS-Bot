@@ -1,6 +1,6 @@
 # Forum Permission Bot
 
-A Discord bot that enforces per-thread posting restrictions in forum channels. When a thread is created in a monitored forum, only the thread author (OP) and configured staff roles can reply. Any other message is deleted and the offending user is notified in a designated channel.
+A Discord bot that enforces per-thread posting restrictions in forum channels and can monitor honeypot channels. In monitored forum threads, only the thread author (OP) and configured staff roles can reply. In honeypot channels, any non-staff account that sends a message is immediately banned.
 
 ## How it works
 
@@ -8,6 +8,12 @@ A Discord bot that enforces per-thread posting restrictions in forum channels. W
 2. Someone without permission posts a reply
 3. The bot deletes the message and posts in the notification channel:
    > @User Your message in #thread-name was removed — only the thread author and staff may post there. Please read the rules: #rules
+
+For honeypot channels:
+
+1. Add one or more channel IDs to `honeypotChannelIds`
+2. Any account without a configured staff role that posts in one of those channels is banned
+3. The bot requests Discord to delete the banned account's last 60 minutes of messages
 
 ## Setup
 
@@ -29,6 +35,7 @@ Use OAuth2 → URL Generator with scope `bot` and permissions:
 - Read Message History
 - Manage Messages
 - Send Messages
+- Ban Members
 
 ### 3. Configure the bot
 
@@ -44,6 +51,7 @@ Edit `config.json`:
 {
   "forumChannelIds": ["ID of the forum channel(s) to monitor"],
   "staffRoleIds":    ["Role ID(s) that can always post in any thread"],
+  "honeypotChannelIds": ["ID of honeypot channel(s) where non-staff posts cause an instant ban"],
   "notificationChannelId": "Channel ID where violation notices are posted",
   "rulesChannelId":        "Channel or thread ID linked in violation notices"
 }

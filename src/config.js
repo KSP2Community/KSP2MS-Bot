@@ -8,6 +8,9 @@ if (!Array.isArray(raw.forumChannelIds) || raw.forumChannelIds.length === 0) {
 if (!Array.isArray(raw.staffRoleIds) || raw.staffRoleIds.length === 0) {
   errors.push('staffRoleIds must be a non-empty array');
 }
+if (!Array.isArray(raw.honeypotChannelIds)) {
+  errors.push('honeypotChannelIds must be an array');
+}
 if (!raw.notificationChannelId || typeof raw.notificationChannelId !== 'string') {
   errors.push('notificationChannelId must be a non-empty string');
 }

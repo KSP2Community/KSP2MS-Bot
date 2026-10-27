@@ -100,15 +100,17 @@ thread deployments. Leaving both destination settings empty disables this featur
 
 The bot polls Weblate's project change history every 15 seconds. Each newly
 observed English source change resets a 60-second quiet timer. Repeated edits
-to the same key are combined; translation-only changes and status/label edits
-do not produce notices. Source changes made through the API, browser, uploads
-and repository imports are covered. The first start establishes a baseline
-without announcing existing history.
+to the same key are combined; glossary changes, translation-only changes and
+status/label edits do not produce notices or delay a game-string batch.
+Glossaries are identified by Weblate's component metadata. Source changes made
+through the API, browser, uploads and repository imports are covered. The first
+start establishes a baseline without announcing existing history.
 
 Each batch lists every changed key with its direct Weblate source link. Large
 batches use numbered parts to fit Discord's limits. Entries without a key, such
-as glossary terms, use their English source text as the link label. Recipients
-choose their translation language in Weblate. Notices do not ping users or roles.
+as entries in source-based file formats, use their English source text as the
+link label. Recipients choose their translation language in Weblate. Notices do
+not ping users or roles.
 
 Pending batches, change cursors and delivery receipts persist in the
 `translator_notices` volume. Interrupted sends recover from thread history and

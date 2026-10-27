@@ -94,7 +94,23 @@ class Weblate {
     return rows.sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp) || a.id - b.id);
   }
 
-  async source(entry) {
+  async gameComponent(value, cache = new Map()) {
+    if (!value.startsWith(`${this.config.base}/api/components/${this.config.project}/`)) {
+      throw new NotificationError('Weblate returned an unexpected component address.');
+    }
+    if (!cache.has(value)) {
+      const component = await this.get(value, { missing: true });
+      if (component && typeof component.is_glossary !== 'boolean') {
+        throw new NotificationError('Weblate returned invalid component metadata; translator notices will retry.');
+      }
+      cache.set(value, !!component && !component.is_glossary);
+    }
+    return cache.get(value);
+  }
+
+  async source(entry, components = new Map()) {
+    // Recheck persisted pending entries as well as newly observed changes.
+    if (!await this.gameComponent(entry.component, components)) return null;
     if (!entry.unit.startsWith(`${this.config.base}/api/units/`)) throw new NotificationError('Invalid source unit address.');
     let unit = await this.get(entry.unit, { missing: true });
     if (!unit) return null;

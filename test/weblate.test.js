@@ -36,6 +36,7 @@ function fixture(t) {
   const api = {
     latest: async () => ({ id: 100, timestamp: new Date(now).toISOString() }),
     changes: async () => [...events],
+    gameComponent: async () => true,
     source: async event => ({ ...source, added: event.added, force: event.force, old: event.old, oldContext: event.oldContext }),
   };
   const client = { user: { id: '1496359877193371859' }, rest: {
@@ -173,32 +174,64 @@ test('large batches contain every complete key and direct link in numbered parts
   }
 });
 
-test('keyless glossary additions retain distinct terms and readable links through batching', async t => {
+test('glossary additions neither post nor delay a game-string batch', async t => {
   const f = fixture(t), service = f.make();
-  const terms = ['Active', 'Sphere of influence (SOI)', 'Quicksave', 'Auto Save'];
-  const units = new Map(terms.map((term, index) => {
-    const url = `${BASE}/api/units/${147955 + index}/`;
-    return [url, { id: 147955 + index, url, context: '', source: [term], source_unit: url,
-      translation: `${BASE}/api/translations/ksp2redux/glossary/en/`,
-      web_url: `${BASE}/translate/ksp2redux/glossary/en/?checksum=test${index}` }];
-  }));
-  const api = new Weblate(CONFIG, async url => ({ ok: true, json: async () => units.get(url.href) }));
-  f.api.source = entry => api.source(entry);
+  // A glossary need not be named "glossary"; trust Weblate's metadata.
+  const glossary = `${BASE}/api/components/ksp2redux/term-bank/`;
+  const api = new Weblate(CONFIG, async url => ({ ok: true, json: async () => ({ is_glossary: url.href === glossary }) }));
+  f.api.gameComponent = (value, cache) => api.gameComponent(value, cache);
   await service.tick();
-  for (const [index, [unit]] of [...units].entries()) {
-    f.events.push({ ...change(101 + index, ''), unit, component: `${BASE}/api/components/ksp2redux/glossary/`,
-      translation: `${BASE}/api/translations/ksp2redux/glossary/en/` });
-  }
+  f.events.push({ ...change(101, ''), component: glossary });
   await service.tick();
-  assert.equal(f.posts.length, 0);
+  assert.deepEqual(service.store.data.pending, {});
+  assert.equal(service.store.data.quietUntil, 0);
   f.advance(60000); await service.tick();
+  assert.equal(f.posts.length, 0);
+  f.events.push(change(102)); await service.tick();
+  const quietUntil = service.store.data.quietUntil;
+  f.advance(50000);
+  f.events.push({ ...change(103, ''), component: glossary }); await service.tick();
+  assert.equal(service.store.data.quietUntil, quietUntil);
+  f.advance(10000); await service.tick();
   assert.equal(f.posts.length, 1);
-  assert.match(f.posts[0].content, /4 added · 0 updated/);
-  const text = f.posts[0].embeds[0].description;
-  for (const [index, term] of terms.entries()) {
-    assert.ok(text.includes(`[${term}](${BASE}/translate/ksp2redux/glossary/en/?checksum=test${index})`));
-  }
-  assert.ok(!text.includes('[]('));
+  assert.match(f.posts[0].content, /1 added · 0 updated/);
+  assert.match(f.posts[0].embeds[0].description, /Testing\/Key/);
+  assert.ok(!f.posts[0].embeds[0].description.includes('term-bank'));
+});
+
+test('component classification is shared within a scan, but refreshed for later scans', async () => {
+  let requests = 0, glossary = true;
+  const component = `${BASE}/api/components/ksp2redux/glossary/`;
+  const api = new Weblate(CONFIG, async () => { requests++; return { ok: true, json: async () => ({ is_glossary: glossary }) }; });
+  const cache = new Map();
+  assert.equal(await api.gameComponent(component, cache), false);
+  assert.equal(await api.gameComponent(component, cache), false);
+  assert.equal(requests, 1);
+  glossary = false;
+  assert.equal(await api.gameComponent(component, new Map()), true);
+  assert.equal(requests, 2);
+});
+
+test('persisted glossary entries are discarded at preparation without reading their units', async () => {
+  const api = new Weblate(CONFIG, async url => {
+    assert.equal(url.href, `${BASE}/api/components/ksp2redux/glossary/`);
+    return { ok: true, json: async () => ({ is_glossary: true }) };
+  });
+  assert.equal(await api.source(candidate({ ...change(101, ''), component: `${BASE}/api/components/ksp2redux/glossary/` }, CONFIG)), null);
+});
+
+test('invalid component metadata retains the cursor and pending batch for retry', async t => {
+  const f = fixture(t), service = f.make();
+  await service.tick();
+  f.events.push(change(101)); await service.tick();
+  const cursor = service.store.data.cursorAt;
+  f.advance(60000); f.events.push(change(102));
+  const api = new Weblate(CONFIG, async () => ({ ok: true, json: async () => ({}) }));
+  f.api.gameComponent = (value, cache) => api.gameComponent(value, cache);
+  await assert.rejects(service.tick(), /invalid component metadata/);
+  assert.equal(service.store.data.cursorAt, cursor);
+  assert.equal(Object.keys(service.store.data.pending).length, 1);
+  assert.equal(f.posts.length, 0);
 });
 
 test('missing or whitespace keys use source text and keyed units keep their key', () => {

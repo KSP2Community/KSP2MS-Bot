@@ -56,6 +56,7 @@ class TranslatorNotices {
     const from = new Date(Date.parse(next.cursorAt) - LOOKBACK).toISOString();
     const until = new Date(now).toISOString();
     const changes = await this.api.changes(from, until);
+    const components = new Map();
     for (const change of changes) {
       if (!Number.isSafeInteger(change.id) || !Number.isFinite(Date.parse(change.timestamp))) {
         throw new NotificationError('Weblate returned an invalid change; the changes cursor was not advanced.');
@@ -63,7 +64,7 @@ class TranslatorNotices {
       if (change.id <= next.baselineId || next.seen[change.id]) continue;
       next.seen[change.id] = change.timestamp;
       const event = candidate(change, this.config);
-      if (!event) continue;
+      if (!event || !await this.api.gameComponent(event.component, components)) continue;
       const key = event.component + ':' + (event.context || event.unit);
       const previous = next.pending[key];
       next.pending[key] = previous ? {
@@ -95,8 +96,9 @@ class TranslatorNotices {
     const box = this.store.data.outbox;
     if (!box || box.parts !== null) return;
     const unique = new Map();
+    const components = new Map();
     for (const entry of box.entries) {
-      const unit = await this.api.source(entry);
+      const unit = await this.api.source(entry, components);
       if (!unit) continue;
       if (!unit.added && !unit.force && unit.source.length === 1 && unit.old === unit.source[0] && unit.oldContext === unit.key) continue;
       if (this.store.data.delivered[unit.unit] === signature(unit)) continue;

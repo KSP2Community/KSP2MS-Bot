@@ -9,14 +9,23 @@ function escape(text) {
   return String(text).replace(/\\/g, '\\\\').replace(/([*_`~|\[\]<>])/g, '\\$1').replace(/[\r\n]+/g, ' ');
 }
 
+function label(unit) {
+  const key = typeof unit.key === 'string' ? unit.key.trim() : '';
+  if (key) return key;
+  // Glossaries and other source-based formats do not have a context/key.
+  const source = unit.source.filter(value => typeof value === 'string' && value.trim()).join(' / ').trim();
+  if (!source) throw new NotificationError('Weblate returned a source string without a readable label; the batch is retained for review.');
+  return source;
+}
+
 function messages(units, timestamp, projectUrl) {
-  const sorted = [...units].sort((a, b) => a.component.localeCompare(b.component) || Number(b.added) - Number(a.added) || a.key.localeCompare(b.key));
+  const sorted = [...units].sort((a, b) => a.component.localeCompare(b.component) || Number(b.added) - Number(a.added) || label(a).localeCompare(label(b)));
   const descriptions = [];
   let lines = [];
   let component = '';
   for (const unit of sorted) {
     const heading = `**${escape(unit.component.replaceAll('/', ' / '))}**`;
-    const line = `• **${unit.added ? 'Added' : 'Updated'}** [${escape(unit.key)}](${unit.url})`;
+    const line = `• **${unit.added ? 'Added' : 'Updated'}** [${escape(label(unit))}](${unit.url})`;
     if (line.length + heading.length > 3800) throw new NotificationError('A source key is too long for a Discord notice; the complete batch is retained for review.');
     const extra = component !== unit.component ? [heading, line] : [line];
     if ([...lines, ...extra].join('\n').length > 3800) {

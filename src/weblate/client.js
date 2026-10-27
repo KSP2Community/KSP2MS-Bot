@@ -105,7 +105,7 @@ class Weblate {
     if (link.origin !== new URL(this.config.base).origin || !link.pathname.startsWith(`/translate/${this.config.project}/`)) {
       throw new NotificationError('Weblate returned an unexpected source link.');
     }
-    if (!Array.isArray(unit.source) || unit.source.every(value => !value)) return null;
+    if (!Array.isArray(unit.source) || unit.source.every(value => typeof value !== 'string' || !value.trim())) return null;
     let component = new URL(entry.component).pathname.split(`/components/${this.config.project}/`)[1].replace(/\/$/, '');
     component = decodeURIComponent(decodeURIComponent(component));
     return { id: unit.id, unit: unit.url, key: unit.context, source: unit.source, url: unit.web_url,

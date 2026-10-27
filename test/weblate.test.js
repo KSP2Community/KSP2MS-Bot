@@ -173,6 +173,45 @@ test('large batches contain every complete key and direct link in numbered parts
   }
 });
 
+test('keyless glossary additions retain distinct terms and readable links through batching', async t => {
+  const f = fixture(t), service = f.make();
+  const terms = ['Active', 'Sphere of influence (SOI)', 'Quicksave', 'Auto Save'];
+  const units = new Map(terms.map((term, index) => {
+    const url = `${BASE}/api/units/${147955 + index}/`;
+    return [url, { id: 147955 + index, url, context: '', source: [term], source_unit: url,
+      translation: `${BASE}/api/translations/ksp2redux/glossary/en/`,
+      web_url: `${BASE}/translate/ksp2redux/glossary/en/?checksum=test${index}` }];
+  }));
+  const api = new Weblate(CONFIG, async url => ({ ok: true, json: async () => units.get(url.href) }));
+  f.api.source = entry => api.source(entry);
+  await service.tick();
+  for (const [index, [unit]] of [...units].entries()) {
+    f.events.push({ ...change(101 + index, ''), unit, component: `${BASE}/api/components/ksp2redux/glossary/`,
+      translation: `${BASE}/api/translations/ksp2redux/glossary/en/` });
+  }
+  await service.tick();
+  assert.equal(f.posts.length, 0);
+  f.advance(60000); await service.tick();
+  assert.equal(f.posts.length, 1);
+  assert.match(f.posts[0].content, /4 added · 0 updated/);
+  const text = f.posts[0].embeds[0].description;
+  for (const [index, term] of terms.entries()) {
+    assert.ok(text.includes(`[${term}](${BASE}/translate/ksp2redux/glossary/en/?checksum=test${index})`));
+  }
+  assert.ok(!text.includes('[]('));
+});
+
+test('missing or whitespace keys use source text and keyed units keep their key', () => {
+  const unit = { added: true, component: 'ui/settings', source: ['Source [with] *formatting*'], url: BASE + '/translate/ksp2redux/ui/settings/en/' };
+  for (const key of [undefined, '', ' \n ']) {
+    const text = messages([{ ...unit, key }], Date.UTC(2026, 9, 27), BASE)[0].embeds[0].description;
+    assert.ok(text.includes('[Source \\[with\\] \\*formatting\\*]('));
+    assert.ok(!text.includes('[]('));
+  }
+  assert.match(messages([{ ...unit, key: 'Testing/Key' }], Date.UTC(2026, 9, 27), BASE)[0].embeds[0].description, /\[Testing\/Key\]\(/);
+  assert.throws(() => messages([{ ...unit, source: [' \n ']}], Date.UTC(2026, 9, 27), BASE), /without a readable label/);
+});
+
 test('corrupt state and a different destination never silently reset pending notices', t => {
   const f = fixture(t), service = f.make();
   service.store.save();

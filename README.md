@@ -106,8 +106,9 @@ and repository imports are covered. The first start establishes a baseline
 without announcing existing history.
 
 Each batch lists every changed key with its direct Weblate source link. Large
-batches use numbered parts to fit Discord's limits. Recipients choose their
-translation language in Weblate. Notices do not ping users or roles.
+batches use numbered parts to fit Discord's limits. Entries without a key, such
+as glossary terms, use their English source text as the link label. Recipients
+choose their translation language in Weblate. Notices do not ping users or roles.
 
 Pending batches, change cursors and delivery receipts persist in the
 `translator_notices` volume. Interrupted sends recover from thread history and

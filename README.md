@@ -89,6 +89,42 @@ For Portainer Stacks:
 
 The container is configured with `restart: unless-stopped`, so it survives crashes and server reboots automatically.
 
+## Translator notices
+
+Mr. Redux can post new and updated English source keys from Weblate to the
+KSP2 Redux translators thread. Set `WEBLATE_NOTIFY_TOKEN` to a Weblate API token
+with read access to the `ksp2redux` project, `WEBLATE_NOTIFY_GUILD_ID` to
+`1078696971088433153`, and `WEBLATE_NOTIFY_THREAD_ID` to `1500585253146857522`.
+Leaving the thread setting empty disables this feature.
+
+The bot polls Weblate's project change history every 15 seconds. Each newly
+observed English source change resets a 60-second quiet timer. Repeated edits
+to the same key are combined; translation-only changes and status/label edits
+do not produce notices. Source changes made through the API, browser, uploads
+and repository imports are covered. The first start establishes a baseline
+without announcing existing history.
+
+Each batch lists every changed key with its direct Weblate source link. Large
+batches use numbered parts to fit Discord's limits. Recipients choose their
+translation language in Weblate. Notices do not ping users or roles.
+
+Pending batches, change cursors and delivery receipts persist in the
+`translator_notices` volume. Interrupted sends recover from thread history and
+use Discord nonces to avoid duplicates. Deleted keys and edits reverted during
+the batching window are omitted. Failed API reads retain the cursor and batch
+for retry. The source token needs no editing, upload or repository permissions.
+
+The bot requires View Channel, Send Messages in Threads, Embed Links and Read
+Message History in the destination. Archived, unlocked threads are reopened
+when posting; locked threads retain pending notices until they become available.
+`WEBLATE_NOTIFY_URL`, `WEBLATE_NOTIFY_PROJECT` and `WEBLATE_NOTIFY_STATE_PATH`
+override the defaults `https://translate.ksp2redux.org`, `ksp2redux` and
+`/data/weblate-notices.json`. The container health check monitors successful
+notification cycles. Notification failures leave moderation running.
+
+Run `npm ci` and `npm test` to check batching, source filtering, persistence,
+retries, duplicate recovery and complete large-batch formatting.
+
 ## Project structure
 
 ```

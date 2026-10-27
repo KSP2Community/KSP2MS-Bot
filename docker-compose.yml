@@ -4,3 +4,12 @@ services:
     restart: unless-stopped
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
+      - WEBLATE_NOTIFY_TOKEN=${WEBLATE_NOTIFY_TOKEN:-}
+      - WEBLATE_NOTIFY_GUILD_ID=${WEBLATE_NOTIFY_GUILD_ID:-}
+      - WEBLATE_NOTIFY_THREAD_ID=${WEBLATE_NOTIFY_THREAD_ID:-}
+    volumes:
+      - translator_notices:/data
+    stop_grace_period: 45s
+
+volumes:
+  translator_notices:

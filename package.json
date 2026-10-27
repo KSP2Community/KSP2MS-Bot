@@ -4,6 +4,7 @@
   "description": "Discord bot that restricts forum thread replies to OP + staff",
   "main": "index.js",
   "scripts": {
+    "test": "node --test",
     "start": "node index.js",
     "dev": "nodemon index.js"
   },

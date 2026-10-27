@@ -5,7 +5,8 @@ const os = require('node:os');
 const path = require('node:path');
 const { Store } = require('../src/weblate/store');
 const { TranslatorNotices } = require('../src/weblate/service');
-const { candidate, Weblate, NotificationError } = require('../src/weblate/client');
+const { candidate, Weblate, NotificationError, settings } = require('../src/weblate/client');
+const { ChannelType, PermissionFlagsBits } = require('discord.js');
 const { messages } = require('../src/weblate/messages');
 
 const BASE = 'https://translate.ksp2redux.org';
@@ -192,4 +193,46 @@ test('API credentials never follow external URLs or redirects', async () => {
   assert.equal(calls, 0);
   await assert.rejects(api.changes('2026-10-27T00:00:00Z', '2026-10-27T01:00:00Z'), /invalid changes pagination/);
   assert.equal(calls, 1);
+});
+
+test('the channel setting takes precedence while the old thread setting stays compatible', () => {
+  const env = { WEBLATE_NOTIFY_TOKEN: 'test-only', WEBLATE_NOTIFY_GUILD_ID: CONFIG.guildId,
+    WEBLATE_NOTIFY_THREAD_ID: CONFIG.threadId, WEBLATE_NOTIFY_CHANNEL_ID: '1564471939446349925' };
+  assert.equal(settings(env).threadId, env.WEBLATE_NOTIFY_CHANNEL_ID);
+  delete env.WEBLATE_NOTIFY_CHANNEL_ID;
+  assert.equal(settings(env).threadId, CONFIG.threadId);
+});
+
+test('regular text destinations require normal message posting rather than thread posting', async t => {
+  const f = fixture(t);
+  const service = f.make();
+  delete service.destination;
+  let permissions;
+  let parentFetched = false;
+  const channel = { type: ChannelType.GuildText, guildId: CONFIG.guildId, isThread: () => false,
+    guild: { members: { fetchMe: async () => {} }, channels: { fetch: async () => { parentFetched = true; } } },
+    permissionsFor: () => ({ has: required => { permissions = required; return true; } }) };
+  f.client.channels = { fetch: async () => channel };
+  await service.destination();
+  assert.ok(permissions.includes(PermissionFlagsBits.SendMessages));
+  assert.ok(!permissions.includes(PermissionFlagsBits.SendMessagesInThreads));
+  assert.equal(parentFetched, false);
+  channel.type = ChannelType.GuildForum;
+  await assert.rejects(service.destination(), /not a text channel/);
+});
+
+test('thread destinations retain thread permissions and only unarchive when posting', async t => {
+  const f = fixture(t), service = f.make();
+  delete service.destination;
+  let permissions, reopened = 0;
+  f.client.channels = { fetch: async () => ({ type: ChannelType.PublicThread, guildId: CONFIG.guildId,
+    isThread: () => true, archived: true, locked: false,
+    guild: { members: { fetchMe: async () => {} }, channels: { fetch: async () => {} } },
+    permissionsFor: () => ({ has: required => { permissions = required; return true; } }),
+    setArchived: async () => { reopened++; } }) };
+  await service.destination(false);
+  assert.equal(reopened, 0);
+  await service.destination(true);
+  assert.equal(reopened, 1);
+  assert.ok(permissions.includes(PermissionFlagsBits.SendMessagesInThreads));
 });

@@ -1,5 +1,5 @@
 const crypto = require('node:crypto');
-const { PermissionFlagsBits, Routes } = require('discord.js');
+const { ChannelType, PermissionFlagsBits, Routes } = require('discord.js');
 const { candidate, Weblate, NotificationError } = require('./client');
 const { Store } = require('./store');
 const { signature, messages, sameMessage } = require('./messages');
@@ -24,18 +24,20 @@ class TranslatorNotices {
 
   async destination(posting = true) {
     const thread = await this.client.channels.fetch(this.config.threadId);
-    if (!thread?.isThread() || thread.guildId !== this.config.guildId) {
-      throw new NotificationError('The configured translator thread is unavailable or belongs to a different server.');
+    const isThread = thread?.isThread();
+    if (!thread || (!isThread && ![ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(thread.type)) ||
+        thread.guildId !== this.config.guildId) {
+      throw new NotificationError('The configured translator destination is unavailable, not a text channel/thread, or belongs to a different server.');
     }
     await thread.guild.members.fetchMe();
-    await thread.guild.channels.fetch(thread.parentId);
-    const required = [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessagesInThreads,
+    if (isThread) await thread.guild.channels.fetch(thread.parentId);
+    const required = [PermissionFlagsBits.ViewChannel, isThread ? PermissionFlagsBits.SendMessagesInThreads : PermissionFlagsBits.SendMessages,
       PermissionFlagsBits.EmbedLinks, PermissionFlagsBits.ReadMessageHistory];
     if (!thread.permissionsFor(this.client.user)?.has(required)) {
-      throw new NotificationError('Mr. Redux needs view, thread posting, embed and message history permissions in the translator thread.');
+      throw new NotificationError('Mr. Redux needs view, posting, embed and message history permissions in the translator destination.');
     }
-    if (thread.locked) throw new NotificationError('The translator thread is locked. Pending notices are retained.');
-    if (thread.archived && posting) await thread.setArchived(false);
+    if (isThread && thread.locked) throw new NotificationError('The translator thread is locked. Pending notices are retained.');
+    if (isThread && thread.archived && posting) await thread.setArchived(false);
     return thread;
   }
 

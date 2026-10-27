@@ -9,9 +9,12 @@ const ACTIONS = [...new Set([...ADDED, ...SOURCE, 2, 5, 6, 7, 8, 9, 27, 59, 72, 
 class NotificationError extends Error {}
 
 function settings(env = process.env) {
-  if (!env.WEBLATE_NOTIFY_THREAD_ID) return null;
+  const target = env.WEBLATE_NOTIFY_CHANNEL_ID || env.WEBLATE_NOTIFY_THREAD_ID;
+  if (!target) return null;
   const result = {
-    threadId: env.WEBLATE_NOTIFY_THREAD_ID,
+    // Keep the internal field and persisted binding compatible with existing
+    // thread deployments; Discord uses channel IDs for both destination types.
+    threadId: target,
     guildId: env.WEBLATE_NOTIFY_GUILD_ID,
     token: env.WEBLATE_NOTIFY_TOKEN,
     base: (env.WEBLATE_NOTIFY_URL || 'https://translate.ksp2redux.org').replace(/\/$/, ''),
@@ -20,7 +23,7 @@ function settings(env = process.env) {
   };
   if (!/^\d{17,20}$/.test(result.threadId) || !/^\d{17,20}$/.test(result.guildId || '') ||
       !result.token || new URL(result.base).protocol !== 'https:' || !/^[\w-]+$/.test(result.project)) {
-    throw new NotificationError('Translator notices require a guild, thread, HTTPS Weblate URL and read-only API token.');
+    throw new NotificationError('Translator notices require a guild, channel or thread, HTTPS Weblate URL and read-only API token.');
   }
   return result;
 }

@@ -7,6 +7,7 @@ services:
       - WEBLATE_NOTIFY_TOKEN=${WEBLATE_NOTIFY_TOKEN:-}
       - WEBLATE_NOTIFY_GUILD_ID=${WEBLATE_NOTIFY_GUILD_ID:-}
       - WEBLATE_NOTIFY_THREAD_ID=${WEBLATE_NOTIFY_THREAD_ID:-}
+      - WEBLATE_NOTIFY_CHANNEL_ID=${WEBLATE_NOTIFY_CHANNEL_ID:-}
     volumes:
       - translator_notices:/data
     stop_grace_period: 45s

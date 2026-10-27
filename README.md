@@ -92,10 +92,11 @@ The container is configured with `restart: unless-stopped`, so it survives crash
 ## Translator notices
 
 Mr. Redux can post new and updated English source keys from Weblate to the
-KSP2 Redux translators thread. Set `WEBLATE_NOTIFY_TOKEN` to a Weblate API token
+KSP2 Redux translators channel or thread. Set `WEBLATE_NOTIFY_TOKEN` to a Weblate API token
 with read access to the `ksp2redux` project, `WEBLATE_NOTIFY_GUILD_ID` to
-`1078696971088433153`, and `WEBLATE_NOTIFY_THREAD_ID` to `1500585253146857522`.
-Leaving the thread setting empty disables this feature.
+`1078696971088433153`, and `WEBLATE_NOTIFY_CHANNEL_ID` to `1564471939446349925`.
+The older `WEBLATE_NOTIFY_THREAD_ID` setting remains supported for existing
+thread deployments. Leaving both destination settings empty disables this feature.
 
 The bot polls Weblate's project change history every 15 seconds. Each newly
 observed English source change resets a 60-second quiet timer. Repeated edits
@@ -114,8 +115,9 @@ use Discord nonces to avoid duplicates. Deleted keys and edits reverted during
 the batching window are omitted. Failed API reads retain the cursor and batch
 for retry. The source token needs no editing, upload or repository permissions.
 
-The bot requires View Channel, Send Messages in Threads, Embed Links and Read
-Message History in the destination. Archived, unlocked threads are reopened
+The bot requires View Channel, Send Messages, Embed Links and Read Message History
+in a text channel, or Send Messages in Threads when the destination is a thread.
+Archived, unlocked threads are reopened
 when posting; locked threads retain pending notices until they become available.
 `WEBLATE_NOTIFY_URL`, `WEBLATE_NOTIFY_PROJECT` and `WEBLATE_NOTIFY_STATE_PATH`
 override the defaults `https://translate.ksp2redux.org`, `ksp2redux` and
